@@ -14,40 +14,58 @@ final class LocationManager: NSObject {
     private let locationManager = CLLocationManager()
     private var completion: ((Result<LocationCoordinate, Error>) -> Void)?
     
+    private var didRequestAuthorization = false
+    private let defaultLocation = LocationCoordinate(latitude: 55.7558, longitude: 37.6173) 
+
     private override init() {
         super.init()
         locationManager.delegate = self
     }
-    
+
     func getUserLocation(completion: @escaping (Result<LocationCoordinate, Error>) -> Void) {
         self.completion = completion
         let status = locationManager.authorizationStatus
         
-        if status == .notDetermined {
+        switch status {
+        case .notDetermined:
+            didRequestAuthorization = true
             locationManager.requestWhenInUseAuthorization()
-        } else if status == .authorizedWhenInUse || status == .authorizedAlways {
+        case .authorizedWhenInUse, .authorizedAlways:
             locationManager.requestLocation()
-        } else {
-            completion(.failure(NSError(domain: "", code: 1, userInfo: [NSLocalizedDescriptionKey: "Location access denied"])))
+        case .denied, .restricted:
+            completion(.success(defaultLocation))
+        @unknown default:
+            completion(.success(defaultLocation))
         }
     }
 }
 
 extension LocationManager: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let loc = locations.first else { return }
+        guard let loc = locations.first else {
+            completion?(.success(defaultLocation))
+            completion = nil
+            return
+        }
         completion?(.success(LocationCoordinate(latitude: loc.coordinate.latitude, longitude: loc.coordinate.longitude)))
         completion = nil
     }
-    
+
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        completion?(.failure(error))
+        completion?(.success(defaultLocation))
         completion = nil
     }
-    
+
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        if locationManager.authorizationStatus == .authorizedWhenInUse {
+        let status = manager.authorizationStatus
+        
+        if status == .authorizedWhenInUse || status == .authorizedAlways {
             locationManager.requestLocation()
+        } else if status == .denied || status == .restricted {
+            if didRequestAuthorization {
+                completion?(.success(defaultLocation))
+                completion = nil
+            }
         }
     }
 }

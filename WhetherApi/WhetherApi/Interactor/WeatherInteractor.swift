@@ -23,10 +23,21 @@ final class WeatherInteractor: WeatherInteractorInputProtocol {
                 switch result {
                 case .success(let data):
                     self?.presenter?.weatherFetchSuccess(data: data)
-                case .failure(let error):
-                    self?.presenter?.weatherFetchFailed(with: error)
+                case .failure(_):
+                    self?.presenter?.weatherFetchFailed()
                 }
             }
         }
+    }
+    
+    func filterHourlyData(from forecast: [ForecastDay]) -> [HourWeather] {
+        guard !forecast.isEmpty else { return [] }
+        let now = Date()
+        let todayHours = forecast[0].hour.filter {
+            guard let date = $0.time.toDate() else { return false }
+            return date > now
+        }
+        let nextDayHours = forecast.count > 1 ? forecast[1].hour : []
+        return todayHours + nextDayHours
     }
 }

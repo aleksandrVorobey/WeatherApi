@@ -9,4 +9,5 @@ import CoreLocation
 
 protocol WeatherInteractorInputProtocol: AnyObject {
     func fetchWeather(for location: LocationCoordinate)
+    func filterHourlyData(from forecast: [ForecastDay]) -> [HourWeather] 
 }

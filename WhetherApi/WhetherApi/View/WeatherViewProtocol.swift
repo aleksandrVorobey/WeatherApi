@@ -9,7 +9,6 @@
 protocol WeatherViewProtocol: AnyObject {
     func showLoading()
     func hideLoading()
-//    func showWeather(data: CurrentWeather, hourly: [HourWeather], daily: [ForecastDay])
-    func showWeather(data: WeatherResponseData)
+    func showWeather(data: WeatherResponseData, hourly: [HourWeather])
     func showError(_ message: String)
 }

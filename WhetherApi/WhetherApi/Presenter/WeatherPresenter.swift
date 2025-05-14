@@ -36,28 +36,27 @@ final class WeatherPresenter: WeatherPresenterProtocol {
         LocationManager.shared.getUserLocation { [weak self] result in
             guard let self = self else { return }
             
-            let coordinate: LocationCoordinate
             switch result {
-            case .success(let loc):
-                coordinate = loc
-            case .failure:
-                coordinate = LocationCoordinate(latitude: 55.7558, longitude: 37.6173)
+            case .success(let coordinate):
+                self.location = coordinate
+                self.interactor.fetchWeather(for: coordinate)
+            case .failure(let error):
+                self.view?.hideLoading()
+                self.view?.showError("Не удалось получить локацию: \(error.localizedDescription)")
             }
-            self.location = coordinate
-            self.interactor.fetchWeather(for: coordinate)
         }
     }
+    
 }
-
-// MARK: - WeatherInteractorOutputProtocol
 
 extension WeatherPresenter: WeatherInteractorOutputProtocol {
     func weatherFetchSuccess(data: WeatherResponseData) {
         view?.hideLoading()
-        view?.showWeather(data: data)
+        let hourly = interactor.filterHourlyData(from: data.forecast.forecastday)
+        view?.showWeather(data: data, hourly: hourly)
     }
     
-    func weatherFetchFailed(with error: Error) {
+    func weatherFetchFailed() {
         view?.hideLoading()
         view?.showError("Не удалось загрузить погоду. Попробуйте еще раз.")
     }

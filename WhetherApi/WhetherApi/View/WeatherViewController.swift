@@ -9,25 +9,25 @@ import UIKit
 
 final class WeatherViewController: UIViewController {
     
-    var presenter: WeatherPresenterProtocol!
+    var presenter: WeatherPresenterProtocol?
     
     private let activityIndicator = UIActivityIndicatorView(style: .large)
     private let errorLabel = UILabel()
     private let retryButton = UIButton(type: .system)
     private let tableView = UITableView()
     
-    private var currentWeather: WeatherResponseData?
+    private var allWeather: WeatherResponseData?
     private var hourly: [HourWeather] = []
     private var daily: [ForecastDay] = []
     
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        presenter.viewDidLoad()
+        presenter?.viewDidLoad()
     }
     
     private func setupUI() {
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = UIColor(red: 0.6, green: 0.8, blue: 1.0, alpha: 1.0)
         
         activityIndicator.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(activityIndicator)
@@ -47,7 +47,11 @@ final class WeatherViewController: UIViewController {
         
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.dataSource = self
-        tableView.register(WeatherCell.self, forCellReuseIdentifier: "WeatherCell")
+        tableView.delegate = self
+        tableView.register(CurrentWeatherCell.self, forCellReuseIdentifier: CurrentWeatherCell.identifier)
+        tableView.register(HourlyForecastRowCell.self, forCellReuseIdentifier: HourlyForecastRowCell.identifier)
+        tableView.register(DailyForecastCell.self, forCellReuseIdentifier: DailyForecastCell.identifier)
+        tableView.backgroundColor = .clear
         view.addSubview(tableView)
         
         NSLayoutConstraint.activate([
@@ -70,7 +74,7 @@ final class WeatherViewController: UIViewController {
     }
     
     @objc private func retryTapped() {
-        presenter.didTapRetry()
+        presenter?.didTapRetry()
     }
 }
 
@@ -93,48 +97,69 @@ extension WeatherViewController: WeatherViewProtocol {
         tableView.isHidden = true
     }
     
-    func showWeather(data: WeatherResponseData) {
-        self.currentWeather = data
-        self.hourly = data.forecast.forecastday[0].hour
+    func showWeather(data: WeatherResponseData, hourly: [HourWeather]) {
+        self.allWeather = data
+        self.hourly = hourly
         self.daily = data.forecast.forecastday
         tableView.isHidden = false
         errorLabel.isHidden = true
         retryButton.isHidden = true
         tableView.reloadData()
     }
+    
 }
 
 extension WeatherViewController: UITableViewDataSource {
     func numberOfSections(in tableView: UITableView) -> Int {
-        return 3 // current, hourly, daily
+        return 3
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         switch section {
-        case 0: return currentWeather != nil ? 1 : 0
-        case 1: return hourly.count
+        case 0: return 1
+        case 1: return 1
         case 2: return daily.count
         default: return 0
         }
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "WeatherCell", for: indexPath) as! WeatherCell
-        
         switch indexPath.section {
         case 0:
-            if let weather = currentWeather {
-                cell.configure(with: "Сейчас: \(weather.current.tempC)°C, \(weather.location.name)")
+            let cell = tableView.dequeueReusableCell(withIdentifier: CurrentWeatherCell.identifier, for: indexPath) as! CurrentWeatherCell
+            if let data = allWeather {
+                cell.configure(with: data)
             }
+            return cell
+            
         case 1:
-            let hour = hourly[indexPath.row]
-            cell.configure(with: "\(hour.time): \(hour.temp_c)°C, \(hour.condition.text)")
+            let cell = tableView.dequeueReusableCell(withIdentifier: HourlyForecastRowCell.identifier, for: indexPath) as! HourlyForecastRowCell
+            cell.configure(with: hourly)
+            return cell
+            
         case 2:
-            let day = daily[indexPath.row]
-            cell.configure(with: "\(day.date_epoch): \(day.day.mintemp_c)°C – \(day.day.maxtemp_c)°C")
+            let cell = tableView.dequeueReusableCell(withIdentifier: DailyForecastCell.identifier, for: indexPath) as! DailyForecastCell
+            let forecast = daily[indexPath.row]
+            cell.configure(with: forecast)
+            return cell
+            
         default:
-            break
+            return UITableViewCell()
         }
-        return cell
+    }
+}
+
+extension WeatherViewController: UITableViewDelegate {
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        switch indexPath.section {
+        case 0:
+            return UITableView.automaticDimension
+        case 1:
+            return 120
+        case 2:
+            return UITableView.automaticDimension
+        default:
+            return UITableView.automaticDimension
+        }
     }
 }

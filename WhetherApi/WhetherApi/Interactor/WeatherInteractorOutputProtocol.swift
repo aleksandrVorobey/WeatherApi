@@ -8,5 +8,5 @@
 
 protocol WeatherInteractorOutputProtocol: AnyObject {
     func weatherFetchSuccess(data: WeatherResponseData)
-    func weatherFetchFailed(with error: Error)
+    func weatherFetchFailed()
 }
